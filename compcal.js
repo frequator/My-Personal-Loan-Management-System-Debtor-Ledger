@@ -1,4 +1,82 @@
-// Core Application State
+// === 1. FIREBASE & LICENSE LOCK SYSTEM (Put this at Line 1) ===
+const firebaseConfig = {
+    apiKey: "AIzaSyBNr8FAOI1FV7cUnoCsCbM1NYQ9a8JAjwY",
+    authDomain: "mypersonalcompcal.firebaseapp.com",
+    databaseURL: "https://mypersonalcompcal-default-rtdb.firebaseio.com",
+    projectId: "mypersonalcompcal",
+    storageBucket: "mypersonalcompcal.firebasestorage.app",
+    messagingSenderId: "490315939778",
+    appId: "1:490315939778:web:d57844886d6f8ffb99605b",
+    measurementId: "G-JTYGCQM7ZD"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.database();
+
+function getBrowserFingerprint() {
+    let deviceId = localStorage.getItem('app_device_id');
+    if (!deviceId) {
+        deviceId = 'DEV_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('app_device_id', deviceId);
+    }
+    return deviceId;
+}
+
+async function verifyLicense() {
+    let userKey = localStorage.getItem('app_license_key');
+
+    if (!userKey) {
+        userKey = prompt("Enter your Client License Key to unlock the application:");
+        if (!userKey) {
+            denyAccess("A valid license key is required to use this software.");
+            return false;
+        }
+        userKey = userKey.trim().toUpperCase();
+    }
+
+    try {
+        const snapshot = await db.ref('licenses/' + userKey).once('value');
+        const licenseData = snapshot.val();
+
+        if (!licenseData || !licenseData.active) {
+            localStorage.removeItem('app_license_key');
+            denyAccess("Invalid or revoked license key.");
+            return false;
+        }
+
+        const currentDevice = getBrowserFingerprint();
+
+        if (!licenseData.deviceId) {
+            await db.ref('licenses/' + userKey).update({ deviceId: currentDevice });
+        } else if (licenseData.deviceId !== currentDevice) {
+            denyAccess("This license key is already locked to another device.");
+            return false;
+        }
+
+        localStorage.setItem('app_license_key', userKey);
+        return true;
+
+    } catch (err) {
+        denyAccess("Unable to verify license key online.");
+        return false;
+    }
+}
+
+function denyAccess(message) {
+    document.body.innerHTML = `
+        <div style="background:#0f172a; color:#ffffff; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;">
+            <h1 style="color:#ef4444; font-size:28px; margin-bottom:10px;">Access Denied</h1>
+            <p style="color:#94a3b8; max-width:400px; margin-bottom:20px;">${message}</p>
+            <button onclick="localStorage.removeItem('app_license_key'); location.reload();" style="background:#6366f1; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">
+                Try Another License Key
+            </button>
+        </div>
+    `;
+}
+// === END LICENSE LOCK SYSTEM ===
+// // Core Application State
 window.appState = {
     borrowers: [],
     loans: [],
@@ -79,8 +157,10 @@ const particleEngine = {
     colorRGB: [212, 154, 106]
 };
 
-// Application Initialization Entry Point
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+    const isAuthorized = await verifyLicense();
+    if (!isAuthorized) return; // Stop if license is invalid
+
     loadFromLocalStorage();
     applyTheme(window.appState.theme);
     syncSettingsToUI();
