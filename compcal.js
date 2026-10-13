@@ -688,6 +688,7 @@ function renderAll() {
     renderDashboardMetrics();
     renderDashboardCharts();
     renderLedger();
+    updateCalcEngine(); // <-- ADDED: Re-calculates and applies current currency to simulator outputs
     lucide.createIcons();
 }
 
