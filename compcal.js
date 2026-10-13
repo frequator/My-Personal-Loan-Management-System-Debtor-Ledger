@@ -1,4 +1,4 @@
-// === 1. FIREBASE & LICENSE LOCK SYSTEM (Put this at Line 1) ===
+// === 1. FIREBASE & LICENSE LOCK SYSTEM (Line 1 of compcal.js) ===
 const firebaseConfig = {
     apiKey: "AIzaSyBNr8FAOI1FV7cUnoCsCbM1NYQ9a8JAjwY",
     authDomain: "mypersonalcompcal.firebaseapp.com",
@@ -75,7 +75,8 @@ function denyAccess(message) {
         </div>
     `;
 }
-// === END LICENSE LOCK SYSTEM ===
+
+
 // // Core Application State
 window.appState = {
     borrowers: [],
