@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="coffee">
+<head>
+    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Command Center - Portfolio & Debt Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
+
+    <!-- Interactive Background Particles Canvas Engine -->
+    <canvas id="particle-canvas" class="fixed inset-0 pointer-events-none z-0 w-full h-full"></canvas>
+
+    <!-- Animated Cutout Spotlight & Pointer Arrow Engine -->
+    <div id="tour-spotlight" class="tour-spotlight-box"></div>
+    <div id="tour-arrow" class="tour-arrow-pointer"></div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <header class="theme-secondary border-b border-slate-800/80 sticky top-0 z-30 shadow-2xl backdrop-blur-md">
+        <div class="max-w-[1700px] mx-auto px-4 sm:px-8 lg:px-12 h-20 flex items-center justify-between gap-4">
+            
+            <!-- Dynamic Personal Greeting -->
+            <div class="flex items-center space-x-3.5">
+                <div class="p-3 rounded-2xl text-white shadow-lg flex items-center justify-center transition-transform hover:scale-105" style="background-color: var(--accent-color);">
+                    <i data-lucide="activity" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 id="header-main-greeting" class="font-extrabold text-base sm:text-2xl tracking-tight leading-none animated-gradient-text">
+                        Welcome Back!
+                    </h1>
+                    <p id="header-sub-greeting" class="text-xs theme-muted mt-1 font-medium flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Financial Control Center • Ready</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <button id="btn-add-debtor-header" onclick="openModal('addBorrowerModal')" class="px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl theme-card border flex items-center gap-2 transition hover:opacity-90 shadow-sm">
+                    <i data-lucide="user-plus" class="w-4 h-4 text-emerald-400"></i>
+                    <span class="hidden sm:inline">Add Debtor</span>
+                </button>
+                <button id="btn-issue-loan-header" onclick="openModal('addLoanModal')" class="px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl accent-btn flex items-center gap-2 transition shadow-lg">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>Issue Loan</span>
+                </button>
+                <button onclick="openModal('settingsModal')" class="p-2.5 rounded-xl theme-card border flex items-center justify-center hover:opacity-90 transition group" title="Settings">
+                    <i data-lucide="settings" class="w-5 h-5 theme-muted group-hover:rotate-90 transition-transform duration-500"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs Bar -->
+        <div class="max-w-[1700px] mx-auto px-4 sm:px-8 lg:px-12 flex space-x-2 overflow-x-auto border-t border-slate-800/60">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn py-3.5 px-6 text-xs sm:text-sm font-bold border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2 whitespace-nowrap transition">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Analytics Dashboard
+            </button>
+            <button onclick="switchTab('calculator')" id="tab-calculator" class="tab-btn py-3.5 px-6 text-xs sm:text-sm font-semibold border-b-2 border-transparent theme-muted flex items-center gap-2 whitespace-nowrap transition">
+                <i data-lucide="calculator" class="w-4 h-4"></i> Simulator Engine (0.00)
+            </button>
+            <button onclick="switchTab('ledger')" id="tab-ledger" class="tab-btn py-3.5 px-6 text-xs sm:text-sm font-semibold border-b-2 border-transparent theme-muted flex items-center gap-2 whitespace-nowrap transition">
+                <i data-lucide="book-open" class="w-4 h-4"></i> Debtors Ledger
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-[1700px] w-full mx-auto px-4 sm:px-8 lg:px-12 py-8 space-y-8 z-10">
+
+        <!-- Top Metrics Cards Container -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+            <div class="theme-card border rounded-2xl p-5 sm:p-6 relative overflow-hidden transition hover:border-slate-700 shadow-md">
+                <div class="flex items-center justify-between theme-muted mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider">Active Loans</span>
+                    <div class="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl">
+                        <i data-lucide="file-text" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="text-3xl sm:text-4xl font-extrabold tracking-tight text-main-color" id="metric-active-count">0</div>
+                <div class="text-xs theme-muted mt-2" id="metric-borrower-sub">0 total debtors registered</div>
+            </div>
+
+            <div class="theme-card border rounded-2xl p-5 sm:p-6 relative overflow-hidden transition hover:border-slate-700 shadow-md">
+                <div class="flex items-center justify-between theme-muted mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider">Total Principal</span>
+                    <div class="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl">
+                        <i data-lucide="coins" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="text-2xl sm:text-3xl font-extrabold tracking-tight text-main-color" id="metric-total-principal"><span class="currency-symbol-label">₱</span> 0.00</div>
+                <div class="text-xs theme-muted mt-2">Capital issued</div>
+            </div>
+
+            <div class="theme-card border rounded-2xl p-5 sm:p-6 relative overflow-hidden transition hover:border-slate-700 shadow-md">
+                <div class="flex items-center justify-between theme-muted mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider">Total Balance Owed</span>
+                    <div class="p-2.5 bg-rose-500/10 text-rose-400 rounded-xl">
+                        <i data-lucide="trending-up" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-rose-400 tracking-tight" id="metric-total-outstanding"><span class="currency-symbol-label">₱</span> 0.00</div>
+                <div class="text-xs theme-muted mt-2" id="metric-interest-accrued-sub">Includes fee accruals</div>
+            </div>
+
+            <div class="theme-card border rounded-2xl p-5 sm:p-6 relative overflow-hidden transition hover:border-slate-700 shadow-md">
+                <div class="flex items-center justify-between theme-muted mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider">Total Profit</span>
+                    <div class="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl">
+                        <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-amber-400 tracking-tight" id="metric-total-profit"><span class="currency-symbol-label">₱</span> 0.00</div>
+                <div class="text-xs theme-muted mt-2" id="metric-profit-breakdown">Interest & late fee breakdown</div>
+            </div>
+
+            <div class="theme-card border rounded-2xl p-5 sm:p-6 relative overflow-hidden transition hover:border-slate-700 shadow-md">
+                <div class="flex items-center justify-between theme-muted mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider">Payments Collected</span>
+                    <div class="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                        <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight" id="metric-total-collected"><span class="currency-symbol-label">₱</span> 0.00</div>
+                <div class="text-xs theme-muted mt-2">Total repayments logged</div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: ANALYTICS DASHBOARD -->
+        <div id="content-dashboard" class="tab-content space-y-8">
+            <div id="chart-section-container" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-8 theme-card border rounded-2xl p-6 space-y-4 shadow-md">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+                        <div>
+                            <h2 class="text-lg font-bold flex items-center gap-2 text-main-color">
+                                <i data-lucide="line-chart" class="w-5 h-5 text-indigo-400"></i> Dynamic Portfolio Growth Trajectory
+                            </h2>
+                            <p class="text-xs theme-muted">Real-time compound interest & penalty trajectory projection</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs theme-muted font-semibold">Horizon:</label>
+                            <select id="chart-horizon-select" onchange="renderDashboardCharts()" class="px-3 py-1.5 theme-input border rounded-xl text-xs font-semibold focus:outline-none">
+                                <option value="1w">1 Week</option>
+                                <option value="2w">2 Weeks</option>
+                                <option value="1m">1 Month</option>
+                                <option value="6m">6 Months</option>
+                                <option value="12m" selected>12 Months</option>
+                                <option value="18m">18 Months</option>
+                                <option value="24m">24 Months</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="h-96 w-full relative">
+                        <canvas id="debtGrowthChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-4 space-y-6 flex flex-col justify-between">
+                    <div class="theme-card border rounded-2xl p-6 flex-1 flex flex-col justify-between shadow-md">
+                        <div>
+                            <h3 class="text-base font-bold mb-1 flex items-center gap-2 text-main-color">
+                                <i data-lucide="pie-chart" class="w-5 h-5 text-emerald-400"></i> Active vs Settled Ratio
+                            </h3>
+                            <p class="text-xs theme-muted mb-4">Portfolio settlement breakdown</p>
+                        </div>
+                        
+                        <div class="h-56 w-full relative flex items-center justify-center">
+                            <canvas id="loanStatusPieChart"></canvas>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-800/80 space-y-2 text-xs">
+                            <div class="flex justify-between theme-muted">
+                                <span>Total Loans Issued:</span>
+                                <span id="dash-total-loans-txt" class="font-bold text-main-color">0</span>
+                            </div>
+                            <div class="flex justify-between theme-muted">
+                                <span>Fully Settled Loans:</span>
+                                <span id="dash-paid-loans-txt" class="font-bold text-emerald-400">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Debtors Table Overview -->
+            <div id="active-debtors-summary-table" class="theme-card border rounded-2xl p-6 shadow-md">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold flex items-center gap-2 text-main-color">
+                            <i data-lucide="users" class="w-5 h-5 text-amber-400"></i> Active Debtors Summary
+                        </h3>
+                        <p class="text-xs theme-muted">Real-time balances calculated from start date to present</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportLedgerCSV()" class="px-3.5 py-2 text-xs font-semibold rounded-xl theme-secondary border flex items-center gap-1.5 transition hover:opacity-90">
+                            <i data-lucide="download" class="w-4 h-4 text-sky-400"></i> Export CSV
+                        </button>
+                        <button onclick="switchTab('ledger')" class="px-3.5 py-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition">
+                            Full Ledger <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="theme-secondary uppercase text-[11px] tracking-wider border-b border-slate-800 theme-muted">
+                            <tr>
+                                <th class="p-3.5">Debtor</th>
+                                <th class="p-3.5">Date Borrowed</th>
+                                <th class="p-3.5">Principal</th>
+                                <th class="p-3.5">Rate / Cycle</th>
+                                <th class="p-3.5">Auto Late Fee</th>
+                                <th class="p-3.5">Current Debt Balance</th>
+                                <th class="p-3.5">Total Repaid</th>
+                                <th class="p-3.5">Status</th>
+                                <th class="p-3.5 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-recent-tbody" class="divide-y divide-slate-800/80 font-mono">
+                            <tr>
+                                <td colspan="9" class="p-8 text-center theme-muted font-sans">
+                                    No active loans recorded. Click <strong class="text-indigo-400 font-semibold">"Issue Loan"</strong> to begin.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: SIMULATOR ENGINE -->
+        <div id="content-calculator" class="tab-content space-y-8 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-5 theme-card border rounded-2xl p-6 space-y-5 shadow-md">
+                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
+                        <div>
+                            <h2 class="text-lg font-bold flex items-center gap-2 text-main-color">
+                                <i data-lucide="calculator" class="w-5 h-5 text-indigo-400"></i> Compound Engine Simulator
+                            </h2>
+                            <p class="text-xs theme-muted">Simulate compound interest and period penalties</p>
+                        </div>
+                        <button onclick="resetCalcForm()" class="text-xs px-3 py-1.5 theme-secondary border rounded-lg hover:opacity-80 transition font-semibold">
+                            Reset (0.00)
+                        </button>
+                    </div>
+
+                    <form id="calc-sim-form" onsubmit="event.preventDefault(); updateCalcEngine();" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Principal Loan Amount (<span class="currency-symbol-label">₱</span>)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center theme-muted text-sm font-bold currency-symbol-label">₱</span>
+                                <input type="number" id="calc-principal" step="0.01" min="0" value="0.00" oninput="updateCalcEngine()" class="w-full pl-9 pr-3 py-2.5 theme-input border rounded-xl font-bold text-sm focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Interest Rate (%)</label>
+                                <div class="relative">
+                                    <input type="number" id="calc-rate" step="0.01" min="0" value="0.00" oninput="updateCalcEngine()" class="w-full pl-3 pr-7 py-2.5 theme-input border rounded-xl font-bold text-sm focus:outline-none">
+                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center theme-muted text-xs font-bold">%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Compounding Cycle</label>
+                                <select id="calc-cycle" onchange="updateCalcEngine()" class="w-full px-3 py-2.5 theme-input border rounded-xl text-xs font-semibold focus:outline-none">
+                                    <option value="monthly" selected>Monthly (Standard)</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="yearly">Yearly</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Calculation Method</label>
+                                <select id="calc-method" onchange="updateCalcEngine()" class="w-full px-3 py-2.5 theme-input border rounded-xl text-xs font-semibold focus:outline-none">
+                                    <option value="compound">Compound (Interest on Interest)</option>
+                                    <option value="simple">Simple Interest (Flat)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Late Penalty / Period (<span class="currency-symbol-label">₱</span>)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center theme-muted text-xs currency-symbol-label">₱</span>
+                                    <input type="number" id="calc-penalty" step="0.01" min="0" value="0.00" oninput="updateCalcEngine()" class="w-full pl-8 pr-2 py-2.5 theme-input border rounded-xl text-xs font-semibold focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Duration (<span id="calc-horizon-unit">Months</span>)</label>
+                            <input type="number" id="calc-periods" min="0" max="60" value="0" oninput="updateCalcEngine()" class="w-full px-3 py-2.5 theme-input border rounded-xl font-bold text-sm focus:outline-none">
+                        </div>
+                    </form>
+
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <div class="theme-secondary p-4 rounded-xl border border-slate-800/80">
+                            <span class="text-xs theme-muted block font-medium">Accrued Interest & Fees</span>
+                            <span class="text-lg font-black text-amber-400" id="calc-out-interest"><span class="currency-symbol-label">₱</span> 0.00</span>
+                        </div>
+                        <div class="theme-secondary p-4 rounded-xl border border-slate-800/80">
+                            <span class="text-xs theme-muted block font-medium">Total Balance Owed</span>
+                            <span class="text-lg font-black text-rose-400" id="calc-out-total"><span class="currency-symbol-label">₱</span> 0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-7 theme-card border rounded-2xl p-6 flex flex-col justify-between shadow-md">
+                    <div>
+                        <div class="flex items-center justify-between mb-4 border-b border-slate-800/80 pb-3">
+                            <h3 class="text-base font-bold flex items-center gap-2 text-main-color">
+                                <i data-lucide="table" class="w-5 h-5 text-indigo-400"></i> Amortization Compound Schedule
+                            </h3>
+                            <span class="text-xs theme-muted font-mono font-bold" id="calc-schedule-count">0 Periods</span>
+                        </div>
+
+                        <div class="overflow-x-auto max-h-[480px] overflow-y-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="theme-secondary sticky top-0 uppercase text-[10px] tracking-wider border-b border-slate-800 z-10 theme-muted">
+                                    <tr>
+                                        <th class="p-3">Period</th>
+                                        <th class="p-3">Starting Debt</th>
+                                        <th class="p-3">Accrued Interest</th>
+                                        <th class="p-3">Penalty</th>
+                                        <th class="p-3 text-right">Ending Debt</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="calc-schedule-tbody" class="divide-y divide-slate-800/60 font-mono">
+                                    <tr>
+                                        <td colspan="5" class="p-8 text-center theme-muted font-sans">
+                                            Adjust principal, rate, or duration parameters above to compute schedule.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: DEBTORS LEDGER -->
+        <div id="content-ledger" class="tab-content space-y-8 hidden">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 theme-card border rounded-2xl p-5 shadow-md">
+                <div class="relative w-full sm:w-96">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 theme-muted"></i>
+                    <input type="text" id="ledger-search" oninput="renderLedger()" placeholder="Search debtor name or notes..." class="w-full pl-10 pr-4 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                </div>
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <button onclick="exportLedgerCSV()" class="px-4 py-2.5 text-xs font-semibold rounded-xl theme-secondary border flex items-center gap-2 whitespace-nowrap">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i> Export CSV
+                    </button>
+                    <button onclick="openModal('addBorrowerModal')" class="px-4 py-2.5 text-xs font-semibold rounded-xl theme-secondary border flex items-center gap-2 whitespace-nowrap">
+                        <i data-lucide="user-plus" class="w-4 h-4 text-emerald-400"></i> Add Debtor
+                    </button>
+                    <button onclick="openModal('addLoanModal')" class="px-4 py-2.5 text-xs font-bold rounded-xl accent-btn flex items-center gap-2 whitespace-nowrap shadow-md">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Issue Loan
+                    </button>
+                </div>
+            </div>
+
+            <div id="borrowers-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            </div>
+        </div>
+
+    </main>
+
+    <!-- COMPACT BOTTOM-LEFT TUTORIAL CARD -->
+    <div id="onboardingModal" class="fixed bottom-6 left-6 z-50 max-w-xs w-full hidden pointer-events-auto">
+        <div class="theme-card border-2 border-indigo-500/80 rounded-2xl p-4 space-y-3 shadow-2xl backdrop-blur-lg">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span id="tour-step-counter" class="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Step 1 of 5</span>
+                <button onclick="completeTour()" class="text-[11px] theme-muted hover:text-white font-semibold flex items-center gap-1">
+                    <span>Skip</span> <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-1.5">
+                <h3 id="tour-title" class="text-sm font-black text-main-color">Welcome!</h3>
+                <h4 id="tour-subtitle" class="text-[11px] font-bold text-indigo-400">Financial Command Center</h4>
+                <p id="tour-description" class="text-[11px] theme-muted leading-relaxed">
+                    Frequator automatically calculates compound interest, tracks debtor balances, logs repayments, and generates printable receipts.
+                </p>
+                <div class="p-2 theme-secondary rounded-lg border border-slate-800 text-[10px] text-amber-300 font-medium flex items-center gap-1.5">
+                    <i data-lucide="lightbulb" class="w-3.5 h-3.5 text-amber-400 flex-shrink-0"></i>
+                    <span id="tour-highlight">Everything is saved locally inside your browser.</span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+                <div id="tour-dots-container" class="flex items-center gap-1">
+                </div>
+
+                <div class="flex items-center gap-1.5">
+                    <button id="tour-back-btn" onclick="prevTourStep()" class="px-3 py-1 theme-secondary border text-[11px] font-semibold rounded-lg hidden">Back</button>
+                    <button id="tour-next-btn" onclick="nextTourStep()" class="px-4 py-1 accent-btn text-[11px] font-bold rounded-lg shadow-md flex items-center gap-1">
+                        <span>Next</span> <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD BORROWER / DEBTOR -->
+    <div id="addBorrowerModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
+        <div class="theme-card border rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold flex items-center gap-2 text-main-color">
+                    <i data-lucide="user-plus" class="w-5 h-5 text-emerald-400"></i> Register New Debtor
+                </h3>
+                <button onclick="closeModal('addBorrowerModal')" class="theme-muted hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="form-add-borrower" onsubmit="handleAddBorrower(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Debtor Full Name *</label>
+                    <input type="text" id="borrower-name" required placeholder="e.g. Juan Dela Cruz" class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Contact Details / Phone</label>
+                    <input type="text" id="borrower-contact" placeholder="e.g. 0917-123-4567" class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Notes / Address</label>
+                    <textarea id="borrower-notes" rows="2" placeholder="e.g. Stall #12 Market Vendor" class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('addBorrowerModal')" class="px-4 py-2 theme-secondary text-xs font-semibold rounded-xl border">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md">Save Debtor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT DEBTOR NOTES & DETAILS -->
+    <div id="editBorrowerModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
+        <div class="theme-card border rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold flex items-center gap-2 text-main-color">
+                    <i data-lucide="pencil" class="w-5 h-5 text-indigo-400"></i> Edit Debtor Notes & Details
+                </h3>
+                <button onclick="closeModal('editBorrowerModal')" class="theme-muted hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="form-edit-borrower" onsubmit="handleEditBorrower(event)" class="space-y-4">
+                <input type="hidden" id="edit-borrower-id">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Debtor Full Name *</label>
+                    <input type="text" id="edit-borrower-name" required class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Contact Details / Phone</label>
+                    <input type="text" id="edit-borrower-contact" class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Edit Debtor Notes & Address</label>
+                    <textarea id="edit-borrower-notes" rows="3" placeholder="Add specific notes, payment agreements, or reminders..." class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('editBorrowerModal')" class="px-4 py-2 theme-secondary text-xs font-semibold rounded-xl border">Cancel</button>
+                    <button type="submit" class="px-5 py-2 accent-btn text-xs font-bold rounded-xl shadow-md">Update Debtor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ISSUE NEW LOAN -->
+    <div id="addLoanModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
+        <div class="theme-card border rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold flex items-center gap-2 text-main-color">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-400"></i> Issue Compound Loan Record
+                </h3>
+                <button onclick="closeModal('addLoanModal')" class="theme-muted hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="form-add-loan" onsubmit="handleAddLoan(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Select Debtor *</label>
+                    <select id="loan-borrower-id" required class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Principal Amount (<span class="currency-symbol-label">₱</span>) *</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center theme-muted text-xs font-bold currency-symbol-label">₱</span>
+                            <input type="number" id="loan-principal" step="0.01" min="0" value="0.00" required class="w-full pl-8 pr-3 py-2.5 theme-input border rounded-xl text-xs font-bold focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Interest Rate (%) *</label>
+                        <div class="relative">
+                            <input type="number" id="loan-rate" step="0.01" min="0" value="0.00" required class="w-full pl-3 pr-7 py-2.5 theme-input border rounded-xl text-xs font-bold focus:outline-none">
+                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center theme-muted text-xs font-bold">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Compounding Cycle</label>
+                        <select id="loan-cycle" class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                            <option value="monthly" selected>Monthly</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Interest Engine</label>
+                        <select id="loan-method" class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                            <option value="compound">Compound Interest</option>
+                            <option value="simple">Simple Interest</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Auto Late Penalty / Period (<span class="currency-symbol-label">₱</span>)</label>
+                        <input type="number" id="loan-penalty" step="0.01" min="0" value="0.00" class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Date Borrowed *</label>
+                        <input type="date" id="loan-date" required class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('addLoanModal')" class="px-4 py-2 theme-secondary border text-xs font-semibold rounded-xl">Cancel</button>
+                    <button type="submit" class="px-5 py-2 accent-btn text-xs font-bold rounded-xl shadow-md">Issue Loan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: LOG REPAYMENT -->
+    <div id="logPaymentModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
+        <div class="theme-card border rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold flex items-center gap-2 text-main-color">
+                    <i data-lucide="banknote" class="w-5 h-5 text-emerald-400"></i> Record Repayment Log
+                </h3>
+                <button onclick="closeModal('logPaymentModal')" class="theme-muted hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="form-log-payment" onsubmit="handleLogPayment(event)" class="space-y-4">
+                <input type="hidden" id="payment-loan-id">
+                
+                <div class="p-3.5 theme-secondary rounded-xl border border-slate-800 text-xs space-y-1.5">
+                    <div class="flex justify-between theme-muted">
+                        <span>Debtor:</span>
+                        <span id="pay-modal-borrower-name" class="font-bold text-main-color">-</span>
+                    </div>
+                    <div class="flex justify-between theme-muted">
+                        <span>Calculated Outstanding Debt:</span>
+                        <span id="pay-modal-current-balance" class="font-bold text-rose-400"><span class="currency-symbol-label">₱</span> 0.00</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Repayment Amount (<span class="currency-symbol-label">₱</span>) *</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center theme-muted text-xs font-bold currency-symbol-label">₱</span>
+                        <input type="number" id="payment-amount" step="0.01" min="0.01" value="0.00" required class="w-full pl-8 pr-3 py-2.5 theme-input border rounded-xl text-xs font-bold focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Repayment Date *</label>
+                    <input type="date" id="payment-date" required class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Notes / Reference</label>
+                    <input type="text" id="payment-notes" placeholder="e.g. GCash Ref #9876123" class="w-full px-3.5 py-2.5 theme-input border rounded-xl text-xs focus:outline-none">
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('logPaymentModal')" class="px-4 py-2 theme-secondary border text-xs font-semibold rounded-xl">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md">Log Repayment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: BORROWER DETAILED LEDGER AUDIT -->
+    <div id="borrowerDetailModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
+        <div class="theme-card border rounded-2xl max-w-3xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl">
+                        <i data-lucide="user" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-main-color" id="detail-borrower-name">Debtor Audit Ledger</h3>
+                        <p class="text-xs theme-muted" id="detail-borrower-contact">Contact Info</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div id="detail-borrower-actions" class="flex items-center gap-2"></div>
+                    <button onclick="closeModal('borrowerDetailModal')" class="theme-muted hover:text-white ml-2">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-4 pr-1" id="detail-loan-cards-container">
+            </div>
+
+            <div class="flex justify-end border-t border-slate-800 pt-3">
+                <button onclick="closeModal('borrowerDetailModal')" class="px-4 py-2 theme-secondary border text-xs font-semibold rounded-xl">
+                    Close Audit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SYSTEM SETTINGS & HOW TO GUIDE -->
+    <div id="settingsModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
+        <div class="theme-card border rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-main-color">
+                    <i data-lucide="settings" class="w-5 h-5 text-indigo-400"></i> Settings
+                </h3>
+                <button onclick="closeModal('settingsModal')" class="theme-muted hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- SECTION 0: HOW TO USE & DOCUMENTATION GUIDE -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-extrabold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                        <i data-lucide="help-circle" class="w-4 h-4"></i> How To Use & Guide
+                    </label>
+                    <button onclick="closeModal('settingsModal'); startTour();" class="text-xs text-emerald-400 font-bold hover:underline flex items-center gap-1">
+                        <i data-lucide="play" class="w-3.5 h-3.5"></i> Launch Interactive Walkthrough
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div class="p-3.5 theme-secondary border rounded-xl space-y-1">
+                        <span class="font-bold text-main-color flex items-center gap-1.5">
+                            <i data-lucide="user-plus" class="w-3.5 h-3.5 text-emerald-400"></i> 1. Registering Debtors
+                        </span>
+                        <p class="theme-muted text-[11px]">Click "Add Debtor" to enter borrower name, contact details, and custom notes or address.</p>
+                    </div>
+
+                    <div class="p-3.5 theme-secondary border rounded-xl space-y-1">
+                        <span class="font-bold text-main-color flex items-center gap-1.5">
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-indigo-400"></i> 2. Issuing Compound Loans
+                        </span>
+                        <p class="theme-muted text-[11px]">Select debtor, principal, interest rate %, cycle, and optional late penalty. Interest compounds daily/monthly automatically.</p>
+                    </div>
+
+                    <div class="p-3.5 theme-secondary border rounded-xl space-y-1">
+                        <span class="font-bold text-main-color flex items-center gap-1.5">
+                            <i data-lucide="banknote" class="w-3.5 h-3.5 text-amber-400"></i> 3. Repayments & Receipts
+                        </span>
+                        <p class="theme-muted text-[11px]">Click "Log Payment" on any active loan to record repayments. Print official receipts or complete audit records directly.</p>
+                    </div>
+
+                    <div class="p-3.5 theme-secondary border rounded-xl space-y-1">
+                        <span class="font-bold text-main-color flex items-center gap-1.5">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-sky-400"></i> 4. Auto Currency Conversion
+                        </span>
+                        <p class="theme-muted text-[11px]">Select a currency below to automatically scale all balances, loan amounts, and payment logs in real-time.</p>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- SECTION 1: AESTHETIC VISUAL THEMES -->
+            <div class="space-y-3">
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                    <i data-lucide="palette" class="w-4 h-4"></i> Visual Theme Presets
+                </label>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <button onclick="setTheme('coffee')" class="p-3 bg-[#1c1410] text-[#f5ebe6] border border-[#543e32] rounded-xl text-left hover:border-[#d49a6a] transition shadow-sm">
+                        <span class="text-xs font-bold block">Warm Coffee</span>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#d49a6a]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#543e32]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#f5ebe6]"></span>
+                        </div>
+                    </button>
+
+                    <button onclick="setTheme('tokyo-night')" class="p-3 bg-[#1a1b26] text-[#7dcfff] border border-[#2ac3de]/30 rounded-xl text-left hover:border-[#bb9af7] transition shadow-sm">
+                        <span class="text-xs font-bold block">Tokyo Night</span>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#7dcfff]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#bb9af7]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#f7768e]"></span>
+                        </div>
+                    </button>
+
+                    <button onclick="setTheme('dracula')" class="p-3 bg-[#282a36] text-[#8be9fd] border border-[#bd93f9]/30 rounded-xl text-left hover:border-[#ff79c6] transition shadow-sm">
+                        <span class="text-xs font-bold block">Dracula Neon</span>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#ff79c6]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#bd93f9]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#8be9fd]"></span>
+                        </div>
+                    </button>
+
+                    <button onclick="setTheme('synthwave')" class="p-3 bg-[#1a0933] text-[#00f0ff] border border-[#ff007f]/30 rounded-xl text-left hover:border-[#ffdd00] transition shadow-sm">
+                        <span class="text-xs font-bold block">80s Synthwave</span>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#ff007f]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#00f0ff]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#ffdd00]"></span>
+                        </div>
+                    </button>
+
+                    <button onclick="setTheme('catppuccin')" class="p-3 bg-[#1e1e2e] text-[#b4befe] border border-[#cba6f7]/30 rounded-xl text-left hover:border-[#f5e0dc] transition shadow-sm">
+                        <span class="text-xs font-bold block">Catppuccin</span>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#b4befe]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#cba6f7]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#f5e0dc]"></span>
+                        </div>
+                    </button>
+
+                    <button onclick="setTheme('nord')" class="p-3 bg-[#2e3440] text-[#88c0d0] border border-[#81a1c1]/30 rounded-xl text-left hover:border-[#ebcb8b] transition shadow-sm">
+                        <span class="text-xs font-bold block">Nord Frost</span>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#88c0d0]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#81a1c1]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#ebcb8b]"></span>
+                        </div>
+                    </button>
+
+                    <button onclick="setTheme('sakura')" class="p-3 bg-[#1d0c15] text-[#ffb7c5] border border-[#f3d085]/30 rounded-xl text-left hover:border-[#f3a4b5] transition shadow-sm">
+                        <span class="text-xs font-bold block">Sakura Blossom</span>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#ffb7c5]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#f3d085]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#f3a4b5]"></span>
+                        </div>
+                    </button>
+
+                    <button onclick="setTheme('dark')" class="p-3 theme-secondary border rounded-xl text-left hover:border-indigo-500 transition shadow-sm">
+                        <span class="text-xs font-bold block">Slate Dark</span>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-700"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                        </div>
+                    </button>
+
+                    <button onclick="setTheme('light')" class="p-3 bg-white text-slate-900 border border-slate-300 rounded-xl text-left hover:border-blue-500 transition shadow-sm">
+                        <span class="text-xs font-bold block">Clean Light</span>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-100 border border-slate-300"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-800"></span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- SECTION 2: CURRENCY & LOCALIZATION -->
+            <div class="space-y-3">
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                    <i data-lucide="globe" class="w-4 h-4"></i> Currency & Auto Conversion
+                </label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div>
+                        <label class="block font-semibold mb-1">Currency Symbol</label>
+                        <select id="setting-currency-select" onchange="updateAppSettings()" class="w-full px-3 py-2 theme-input border rounded-xl text-xs font-semibold focus:outline-none">
+                            <option value="₱">₱ (PHP - Philippine Peso)</option>
+                            <option value="$">$ (USD - Dollar)</option>
+                            <option value="€">€ (EUR - Euro)</option>
+                            <option value="£">£ (GBP - Pound)</option>
+                            <option value="¥">¥ (JPY - Yen)</option>
+                            <option value="₹">₹ (INR - Rupee)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">Default Rate (%)</label>
+                        <input type="number" id="setting-default-rate" step="0.5" value="5" onchange="updateAppSettings()" class="w-full px-3 py-2 theme-input border rounded-xl text-xs font-bold focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">Default Penalty (<span class="currency-symbol-label">₱</span>)</label>
+                        <input type="number" id="setting-default-penalty" step="10" value="100" onchange="updateAppSettings()" class="w-full px-3 py-2 theme-input border rounded-xl text-xs font-bold focus:outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- SECTION 3: CANVAS PERFORMANCE -->
+            <div class="space-y-3">
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Canvas Particle Engine
+                </label>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 theme-secondary p-3.5 rounded-xl border border-slate-800 text-xs">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="setting-particle-toggle" onchange="updateAppSettings()" class="w-4 h-4 accent-indigo-500 rounded">
+                        <div>
+                            <span class="font-bold block text-main-color">Enable Background Particles</span>
+                            <span class="theme-muted text-[11px]">Toggle particle canvas graphics overlay</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-48">
+                        <span class="theme-muted text-[11px] font-medium">Speed:</span>
+                        <input type="range" id="setting-particle-speed" min="0.2" max="3" step="0.2" value="1" onchange="updateAppSettings()" class="w-full accent-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- SECTION 4: DATA EXPORT -->
+            <div class="space-y-3">
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                    <i data-lucide="database" class="w-4 h-4"></i> Data Export
+                </label>
+                <div class="grid grid-cols-1 gap-3">
+                    <button onclick="exportLedgerCSV()" class="p-3 theme-secondary border rounded-xl text-xs font-semibold flex items-center gap-2 hover:border-indigo-500 transition">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Export Ledger CSV Statement</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- DANGER ZONE SECTION -->
+            <div class="pt-2">
+                <div class="danger-border-glow bg-rose-950/40 p-4 rounded-xl space-y-3">
+                    <div class="flex items-center gap-2 text-rose-400 font-extrabold text-sm">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 animate-bounce text-rose-500"></i>
+                        <span>DANGER ZONE</span>
+                    </div>
+                    <p class="text-xs text-rose-200/80 leading-relaxed">
+                        Reset all debtor ledgers, wipe active loan logs, and return all metrics strictly to 0.00.
+                    </p>
+                    <button onclick="triggerResetConfirmationModal()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2 transition">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> RESET ALL DATA (Wipe Entire System)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DANGER CONFIRMATION -->
+    <div id="dangerConfirmModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
+        <div class="theme-card border-2 border-rose-500 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center gap-3 text-rose-500">
+                <div class="p-3 bg-rose-500/10 rounded-xl">
+                    <i data-lucide="alert-octagon" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-extrabold text-white">Confirm Complete System Reset</h3>
+                    <p class="text-xs text-rose-400 font-semibold">This action cannot be undone!</p>
+                </div>
+            </div>
+
+            <p class="text-xs theme-muted leading-relaxed">
+                To prevent accidental deletion, type <strong class="text-rose-400 font-mono">RESET</strong> in the input field below to purge all debtor ledgers, active loans, and payment history back to 0.00.
+            </p>
+
+            <input type="text" id="reset-confirm-input" placeholder="Type RESET to confirm" class="w-full px-3.5 py-2.5 theme-input border border-rose-500/50 rounded-xl text-xs font-mono text-center focus:outline-none focus:border-rose-500">
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeModal('dangerConfirmModal')" class="px-4 py-2 theme-secondary border text-xs font-semibold rounded-xl">Cancel</button>
+                <button type="button" onclick="executeSystemReset()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-md">PERMANENTLY WIPE ALL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SINGLE ITEM DELETE CONFIRMATION -->
+    <div id="singleDeleteModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
+        <div class="theme-card border rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex items-center gap-3 text-rose-400">
+                <i data-lucide="trash" class="w-5 h-5"></i>
+                <h4 class="text-sm font-bold text-main-color" id="single-delete-title">Delete Record</h4>
+            </div>
+            <p class="text-xs theme-muted" id="single-delete-msg">Are you sure you want to remove this record?</p>
+            <input type="hidden" id="single-delete-id">
+            <input type="hidden" id="single-delete-type">
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeModal('singleDeleteModal')" class="px-3.5 py-1.5 theme-secondary border text-xs font-semibold rounded-xl">Cancel</button>
+                <button type="button" onclick="executeSingleDelete()" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER BAR -->
+    <div class="footer-bottom-bar my-6">
+        <div class="footer-bottom-left">
+            <img src="Frequator.png" alt="Logo" class="footer-bottom-logo" onerror="this.style.display='none'">
+            <span>&copy; Ian Uozoia 2026.</span>
+        </div>
+    </div>
+
+    <!-- External JavaScript -->
+    <script src="compcal.js"></script>
+</body>
+</html>
