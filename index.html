@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="coffee">
 <head>
-    <!-- Inside the <head> tag of index.html -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="compcal.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    
     <link rel="stylesheet" href="style.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,6 +29,7 @@
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+
 <body class="min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
 
     <!-- Interactive Background Particles Canvas Engine -->
@@ -928,7 +929,7 @@
         </div>
     </div>
 
-    <!-- External JavaScript -->
+    <!-- External JavaScript (Only load compcal.js ONCE here) -->
     <script src="compcal.js"></script>
 </body>
 </html>
