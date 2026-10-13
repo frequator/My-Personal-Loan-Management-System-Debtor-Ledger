@@ -1,0 +1,12 @@
+{
+  "licenses": {
+    "KEY-BUYER-001": {
+      "active": true,
+      "deviceId": ""
+    },
+    "KEY-BUYER-002": {
+      "active": true,
+      "deviceId": ""
+    }
+  }
+}
